@@ -83,6 +83,18 @@ def root():
     return RedirectResponse(url="/static/index.html")
 
 
+@app.delete("/activities/{activity_name}/participants")
+def remove_participant(activity_name: str, email: str):
+    """Unregister a student from an activity"""
+    if activity_name not in activities:
+        raise HTTPException(status_code=404, detail="Activity not found")
+    activity = activities[activity_name]
+    if email not in activity["participants"]:
+        raise HTTPException(status_code=404, detail="Participant not found")
+    activity["participants"].remove(email)
+    return {"message": f"Removed {email} from {activity_name}"}
+
+
 @app.get("/activities")
 def get_activities():
     return activities
@@ -98,9 +110,13 @@ def signup_for_activity(activity_name: str, email: str):
     # Get the specific activity
     activity = activities[activity_name]
 
-    # Validate student is not already signed up
+    # prevent duplicate signups
     if email in activity["participants"]:
         raise HTTPException(status_code=400, detail="Student already signed up for this activity")
+
+    # enforce capacity
+    if len(activity["participants"]) >= activity["max_participants"]:
+        raise HTTPException(status_code=400, detail="Activity is full")
 
     # Add student
     activity["participants"].append(email)
